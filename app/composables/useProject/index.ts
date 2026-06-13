@@ -1,9 +1,10 @@
 import { ref } from 'vue'
+import type { Project } from '~/types'
 import { useGeneralAPI } from '~/composables/useGeneralApi'
 
 export const useProjectApi = () => {
     const { generalAPI, loading, error } = useGeneralAPI()
-    const projects = ref<any[]>([])
+    const projects = ref<Project[]>([])
 
     const fetchProjects = async () => {
         try {

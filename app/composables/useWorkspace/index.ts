@@ -1,12 +1,13 @@
 import { ref } from 'vue'
 import { useGeneralAPI } from '~/composables/useGeneralApi'
+import type { Workspace } from '~/types'
 import { useAuthStore } from '~/stores/auth'
 
 export const useWorkspaceApi = () => {
     const { generalAPI, loading, error } = useGeneralAPI()
     const authStore = useAuthStore()
 
-    const workspaces = ref<any[]>([])
+    const workspaces = ref<Workspace[]>([])
 
     const fetchWorkspaces = async () => {
         try {

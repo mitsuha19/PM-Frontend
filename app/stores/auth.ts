@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
+import type { User } from '~/types'
 
 export const useAuthStore = defineStore('auth', () => {
     const token = useCookie<string | null>('auth_token', { default: () => null })
-    const user = useCookie<any | null>('auth_user', { default: () => null })
+    const user = useCookie<User | null>('auth_user', { default: () => null })
     const activeWorkspaceId = useCookie<number | null>('active_workspace_id', { default: () => null })
 
     const isLoggedIn = computed(() => !!token.value)
