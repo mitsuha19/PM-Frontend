@@ -79,55 +79,42 @@
 
     </div>
 
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Buat Workspace Baru</h3>
-
+    <UiModal v-model="isModalOpen" title="Buat Workspace Baru">
+      <form id="createWorkspaceForm" @submit.prevent="handleCreateWorkspace">
         <div v-if="workspaceError" class="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm">
           {{ workspaceError.message }}
         </div>
 
-        <form @submit.prevent="handleCreateWorkspace">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Workspace</label>
-            <input
-                type="text"
-                v-model="newWorkspace.name"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="Cth: Tim Alpha"
-            >
-          </div>
-          <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi (Opsional)</label>
-            <textarea
-                v-model="newWorkspace.description"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
-                rows="3"
-                placeholder="Deskripsi singkat workspace..."
-            ></textarea>
-          </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nama Workspace</label>
+          <input
+              type="text"
+              v-model="newWorkspace.name"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Cth: Tim Alpha"
+          >
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi (Opsional)</label>
+          <textarea
+              v-model="newWorkspace.description"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
+              rows="3"
+              placeholder="Deskripsi singkat workspace..."
+          ></textarea>
+        </div>
+      </form>
 
-          <div class="flex justify-end gap-3">
-            <button
-                type="button"
-                @click="isModalOpen = false"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-                type="submit"
-                :disabled="workspaceLoading"
-                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center"
-            >
-              <svg v-if="workspaceLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              {{ workspaceLoading ? 'Menyimpan...' : 'Simpan Workspace' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <template #footer>
+        <UiButton variant="secondary" @click="isModalOpen = false">
+          Batal
+        </UiButton>
+        <UiButton type="submit" form="createWorkspaceForm" variant="primary" :loading="workspaceLoading">
+          Simpan Workspace
+        </UiButton>
+      </template>
+    </UiModal>
 
   </div>
 </template>
@@ -135,9 +122,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
-import {useAuthApi} from "~/composables/useAuth";
-import {useWorkspaceApi} from "~/composables/useWorkspace";
-
+import { useAuthApi } from "~/composables/useAuth";
+import { useWorkspaceApi } from "~/composables/useWorkspace";
 
 const authStore = useAuthStore()
 const { logout } = useAuthApi()
