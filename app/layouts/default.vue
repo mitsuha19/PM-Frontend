@@ -13,6 +13,9 @@
         <NuxtLink to="/projects" class="block px-4 py-2.5 rounded-lg text-gray-300 transition-colors hover:bg-gray-800" active-class="bg-blue-600 text-white font-medium">
           Projects
         </NuxtLink>
+        <NuxtLink to="/members" class="block px-4 py-2.5 rounded-lg text-gray-300 transition-colors hover:bg-gray-800" active-class="bg-blue-600 text-white font-medium">
+          Tim
+        </NuxtLink>
       </nav>
 
       <div class="p-4 border-t border-gray-800">
