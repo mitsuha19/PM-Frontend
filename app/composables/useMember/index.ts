@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useAuthStore } from '~/stores/auth'
 import { useGeneralAPI } from '~/composables/useGeneralApi'
 import type {WorkspaceMember} from "~/types/member";
 
@@ -38,11 +39,34 @@ export const useMemberApi = () => {
             throw e
         }
     }
+    const acceptInvitation = async (token: string) => {
+        const authStore = useAuthStore()
+        loading.value = true
+        error.value = null
+        try {
+            const response: any = await generalAPI({
+                endpoint: `invitations/${token}/accept`,
+                method: 'POST'
+            })
+            if (response?.data?.id) {
+                authStore.setActiveWorkspace(response.data.id)
+            }
+
+            return response
+        } catch (e: any) {
+            error.value = e
+            throw e
+        } finally {
+            loading.value = false
+        }
+    }
+
 
     return {
         members,
         fetchMembers,
         addMember,
+        acceptInvitation,
         loading,
         error
     }
