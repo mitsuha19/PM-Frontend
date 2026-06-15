@@ -16,7 +16,12 @@
 
     <div v-else class="flex gap-6 overflow-x-auto pb-4">
 
-      <div class="min-w-[300px] flex-1 bg-gray-100 rounded-xl p-4 flex flex-col h-full min-h-[500px]">
+      <div
+          class="min-w-[300px] flex-1 bg-gray-100 rounded-xl p-4 flex flex-col h-full min-h-[500px] transition-colors"
+          @drop="onDrop($event, 'todo')"
+          @dragover.prevent
+          @dragenter.prevent
+      >
         <h3 class="font-bold text-gray-700 mb-4 flex items-center justify-between">
           <span>To Do</span>
           <span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs">{{ todoTasks.length }}</span>
@@ -25,8 +30,10 @@
           <div
               v-for="task in todoTasks"
               :key="task.id"
+              draggable="true"
+              @dragstart="startDrag($event, task)"
               @click="openEditModal(task)"
-              class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:border-blue-300 transition-colors"
+              class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:border-blue-300 transition-colors"
           >
             <h4 class="font-medium text-gray-900">{{ task.title }}</h4>
             <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ task.description }}</p>
@@ -35,7 +42,12 @@
         </div>
       </div>
 
-      <div class="min-w-[300px] flex-1 bg-blue-50 rounded-xl p-4 flex flex-col h-full min-h-[500px]">
+      <div
+          class="min-w-[300px] flex-1 bg-blue-50 rounded-xl p-4 flex flex-col h-full min-h-[500px] transition-colors"
+          @drop="onDrop($event, 'in_progress')"
+          @dragover.prevent
+          @dragenter.prevent
+      >
         <h3 class="font-bold text-blue-800 mb-4 flex items-center justify-between">
           <span>In Progress</span>
           <span class="bg-blue-200 text-blue-800 px-2 py-0.5 rounded text-xs">{{ inProgressTasks.length }}</span>
@@ -44,8 +56,10 @@
           <div
               v-for="task in inProgressTasks"
               :key="task.id"
+              draggable="true"
+              @dragstart="startDrag($event, task)"
               @click="openEditModal(task)"
-              class="bg-white p-4 rounded-lg shadow-sm border border-blue-100 cursor-pointer hover:border-blue-300 transition-colors"
+              class="bg-white p-4 rounded-lg shadow-sm border border-blue-100 cursor-grab active:cursor-grabbing hover:border-blue-300 transition-colors"
           >
             <h4 class="font-medium text-gray-900">{{ task.title }}</h4>
             <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ task.description }}</p>
@@ -54,7 +68,12 @@
         </div>
       </div>
 
-      <div class="min-w-[300px] flex-1 bg-green-50 rounded-xl p-4 flex flex-col h-full min-h-[500px]">
+      <div
+          class="min-w-[300px] flex-1 bg-green-50 rounded-xl p-4 flex flex-col h-full min-h-[500px] transition-colors"
+          @drop="onDrop($event, 'done')"
+          @dragover.prevent
+          @dragenter.prevent
+      >
         <h3 class="font-bold text-green-800 mb-4 flex items-center justify-between">
           <span>Done</span>
           <span class="bg-green-200 text-green-800 px-2 py-0.5 rounded text-xs">{{ doneTasks.length }}</span>
@@ -63,8 +82,10 @@
           <div
               v-for="task in doneTasks"
               :key="task.id"
+              draggable="true"
+              @dragstart="startDrag($event, task)"
               @click="openEditModal(task)"
-              class="bg-white p-4 rounded-lg shadow-sm border border-green-100 cursor-pointer hover:border-green-300 opacity-75 transition-colors"
+              class="bg-white p-4 rounded-lg shadow-sm border border-green-100 cursor-grab active:cursor-grabbing hover:border-green-300 opacity-75 transition-colors"
           >
             <h4 class="font-medium text-gray-900 line-through">{{ task.title }}</h4>
             <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ task.description }}</p>
@@ -167,6 +188,49 @@ const doneTasks = computed(() => tasks.value.filter(t => t.status === 'done'))
 onMounted(async () => {
   await fetchTasks(projectId)
 })
+
+// === LOGIKA DRAG & DROP ===
+
+// Memulai drag: menyimpan ID tugas
+const startDrag = (event: DragEvent, task: Task) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('taskId', task.id.toString())
+  }
+}
+
+// Menjatuhkan tugas ke kolom baru
+const onDrop = async (event: DragEvent, newStatus: string) => {
+  const taskIdStr = event.dataTransfer?.getData('taskId')
+  if (!taskIdStr) return
+
+  const taskId = parseInt(taskIdStr)
+  const task = tasks.value.find(t => t.id === taskId)
+
+  // Pastikan tugas ada dan statusnya benar-benar berubah
+  if (task && task.status !== newStatus) {
+    const oldStatus = task.status
+
+    // Optimistic Update UI: Ubah status secara instan di layar
+    task.status = newStatus
+
+    try {
+      // Update data di backend tanpa menampilkan loading screen yang mengganggu
+      await updateTask(projectId, taskId, {
+        title: task.title,
+        description: task.description || '',
+        status: newStatus
+      })
+    } catch (e) {
+      // Rollback jika update API gagal
+      task.status = oldStatus
+      alert('Gagal memindahkan tugas. Silakan coba lagi.')
+    }
+  }
+}
+
+// === LOGIKA MODAL (CREATE, EDIT, DELETE) ===
 
 const openCreateModal = () => {
   isEditing.value = false
