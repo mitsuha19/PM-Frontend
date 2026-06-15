@@ -1,3 +1,94 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import { useAuthStore } from '~/stores/auth'
+import { useAuthApi } from "~/composables/useAuth";
+import { useWorkspaceApi } from "~/composables/useWorkspace";
+
+const authStore = useAuthStore()
+const { logout } = useAuthApi()
+
+const { workspaces, fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, loading: workspaceLoading, error: workspaceError } = useWorkspaceApi()
+
+const isModalOpen = ref(false)
+const isEditing = ref(false)
+const editingWorkspaceId = ref<number | null>(null)
+
+const workspaceForm = ref({
+  name: '',
+  description: ''
+})
+
+onMounted(async () => {
+  await fetchWorkspaces()
+})
+
+const handleLogout = async () => {
+  await logout()
+}
+
+const switchWorkspace = (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  authStore.setActiveWorkspace(Number(target.value))
+}
+
+const activeWorkspaceRole = computed(() => {
+  const currentWs = workspaces.value.find(w => w.id === authStore.activeWorkspaceId)
+  return currentWs?.pivot?.role || 'member'
+})
+const openCreateModal = () => {
+  isEditing.value = false
+  editingWorkspaceId.value = null
+  workspaceForm.value = { name: '', description: '' }
+  isModalOpen.value = true
+}
+
+const openEditModal = () => {
+  const currentWs = workspaces.value.find(w => w.id === authStore.activeWorkspaceId)
+  if (currentWs) {
+    isEditing.value = true
+    editingWorkspaceId.value = currentWs.id
+    workspaceForm.value = {
+      name: currentWs.name,
+      description: currentWs.description || ''
+    }
+    isModalOpen.value = true
+  }
+}
+
+const handleSubmit = async () => {
+  try {
+    if (isEditing.value && editingWorkspaceId.value) {
+      await updateWorkspace(editingWorkspaceId.value, {
+        name: workspaceForm.value.name,
+        description: workspaceForm.value.description
+      })
+    } else {
+      await createWorkspace({
+        name: workspaceForm.value.name,
+        description: workspaceForm.value.description
+      })
+    }
+
+    isModalOpen.value = false
+  } catch (error) {
+  }
+}
+
+const handleDelete = async () => {
+  if (!editingWorkspaceId.value) return
+
+  const isConfirmed = window.confirm('Apakah Anda yakin ingin menghapus workspace ini secara permanen? Seluruh data proyek, tugas, dan anggota di dalamnya akan hilang dan tidak dapat dikembalikan.')
+
+  if (isConfirmed) {
+    try {
+      await deleteWorkspace(editingWorkspaceId.value)
+      isModalOpen.value = false
+    } catch (error) {
+    }
+  }
+}
+</script>
+
 <template>
   <div class="min-h-screen flex bg-gray-50 font-sans relative">
 
@@ -49,7 +140,16 @@
 
             <span v-else class="text-sm text-red-500 italic">Belum ada Workspace</span>
 
-            <button @click="isModalOpen = true" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors" title="Buat Workspace Baru">
+            <button
+                v-if="workspaces.length > 0 && (activeWorkspaceRole === 'owner' || activeWorkspaceRole === 'admin')"
+                @click="openEditModal"
+                class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                title="Pengaturan Workspace"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+
+            <button @click="openCreateModal" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors" title="Buat Workspace Baru">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             </button>
           </div>
@@ -82,8 +182,8 @@
 
     </div>
 
-    <UiModal v-model="isModalOpen" title="Buat Workspace Baru">
-      <form id="createWorkspaceForm" @submit.prevent="handleCreateWorkspace">
+    <UiModal v-model="isModalOpen" :title="isEditing ? 'Pengaturan Workspace' : 'Buat Workspace Baru'">
+      <form id="workspaceForm" @submit.prevent="handleSubmit">
         <div v-if="workspaceError" class="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm">
           {{ workspaceError.message }}
         </div>
@@ -92,7 +192,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Workspace</label>
           <input
               type="text"
-              v-model="newWorkspace.name"
+              v-model="workspaceForm.name"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Cth: Tim Alpha"
@@ -101,7 +201,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi (Opsional)</label>
           <textarea
-              v-model="newWorkspace.description"
+              v-model="workspaceForm.description"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
               rows="3"
               placeholder="Deskripsi singkat workspace..."
@@ -110,59 +210,31 @@
       </form>
 
       <template #footer>
-        <UiButton variant="secondary" @click="isModalOpen = false">
-          Batal
-        </UiButton>
-        <UiButton type="submit" form="createWorkspaceForm" variant="primary" :loading="workspaceLoading">
-          Simpan Workspace
-        </UiButton>
+        <div class="flex justify-between w-full">
+          <div>
+            <UiButton
+                v-if="isEditing"
+                type="button"
+                variant="danger"
+                @click="handleDelete"
+                :disabled="workspaceLoading"
+            >
+              Hapus
+            </UiButton>
+          </div>
+
+          <div class="flex gap-3">
+            <UiButton variant="secondary" @click="isModalOpen = false">
+              Batal
+            </UiButton>
+            <UiButton type="submit" form="workspaceForm" variant="primary" :loading="workspaceLoading">
+              {{ isEditing ? 'Simpan Perubahan' : 'Simpan Workspace' }}
+            </UiButton>
+          </div>
+        </div>
       </template>
     </UiModal>
 
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useAuthStore } from '~/stores/auth'
-import { useAuthApi } from "~/composables/useAuth";
-import { useWorkspaceApi } from "~/composables/useWorkspace";
-
-const authStore = useAuthStore()
-const { logout } = useAuthApi()
-
-const { workspaces, fetchWorkspaces, createWorkspace, loading: workspaceLoading, error: workspaceError } = useWorkspaceApi()
-
-const isModalOpen = ref(false)
-const newWorkspace = ref({
-  name: '',
-  description: ''
-})
-
-onMounted(async () => {
-  await fetchWorkspaces()
-})
-
-const handleLogout = async () => {
-  await logout()
-}
-
-const switchWorkspace = (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  authStore.setActiveWorkspace(Number(target.value))
-}
-
-const handleCreateWorkspace = async () => {
-  try {
-    await createWorkspace({
-      name: newWorkspace.value.name,
-      description: newWorkspace.value.description
-    })
-
-    isModalOpen.value = false
-    newWorkspace.value = { name: '', description: '' }
-  } catch (error) {
-
-  }
-}
-</script>

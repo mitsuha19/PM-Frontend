@@ -4,4 +4,7 @@ export interface Workspace {
     description: string | null;
     created_at: string;
     updated_at: string;
+    pivot?: {
+        role: 'owner' | 'admin' | 'member'
+    }
 }

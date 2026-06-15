@@ -56,10 +56,51 @@ export const useWorkspaceApi = () => {
         }
     }
 
+    const updateWorkspace = async (workspaceId: number | string, data: { name: string; description? : string }) => {
+        try {
+            const response: any = await generalAPI({
+                endpoint: 'workspace',
+                method: 'PUT',
+                embodied: true,
+                body: data
+            })
+
+            await fetchWorkspaces()
+            return response.data || response
+        } catch (e) {
+            console.error('Gagal mengambil data workspace:', e)
+            throw e
+        }
+    }
+
+    const deleteWorkspace = async (workspaceId: number | string) => {
+        try {
+            await generalAPI({
+                endpoint: 'workspace',
+                method: 'DELETE',
+            })
+
+            await fetchWorkspaces()
+
+            if ( authStore.activeWorkspaceId === Number(workspaceId)) {
+                if(workspaces.value.length > 0) {
+                    authStore.setActiveWorkspace(workspaces.value[0].id)
+                } else {
+                    authStore.setActiveWorkspace(null as any)
+                }
+            }
+        } catch (e) {
+            console.error('Gagal mengambil data workspace:', e)
+            throw e
+        }
+    }
+
     return {
         workspaces,
         fetchWorkspaces,
         createWorkspace,
+        updateWorkspace,
+        deleteWorkspace,
         loading,
         error
     }
