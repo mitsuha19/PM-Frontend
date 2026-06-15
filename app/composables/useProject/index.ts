@@ -38,10 +38,43 @@ export const useProjectApi = () => {
         }
     }
 
+    const updateProject = async (projectId: string | number, data: { name: string; description: string }) => {
+        try {
+            const response: any = await generalAPI({
+                endpoint: `project/${projectId}`,
+                method: 'PUT',
+                embodied: true,
+                body: data
+            })
+
+            await fetchProjects()
+            return response.data || response
+        } catch (e) {
+            console.error('Gagal memperbarui proyek:', e)
+            throw e
+        }
+    }
+
+    const deleteProject = async (projectId: string | number) => {
+        try {
+            await generalAPI({
+                endpoint: `project/${projectId}`,
+                method: 'DELETE'
+            })
+
+            await fetchProjects()
+        } catch (e) {
+            console.error('Gagal menghapus proyek:', e)
+            throw e
+        }
+    }
+
     return {
         projects,
         fetchProjects,
         createProject,
+        updateProject,
+        deleteProject,
         loading,
         error
     }

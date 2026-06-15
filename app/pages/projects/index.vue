@@ -6,7 +6,7 @@
         <p class="text-sm text-gray-500 mt-1">Kelola semua proyek di dalam workspace ini.</p>
       </div>
 
-      <UiButton @click="isModalOpen = true">
+      <UiButton @click="openCreateModal">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
         Proyek Baru
       </UiButton>
@@ -22,7 +22,7 @@
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-1">Belum ada proyek</h3>
       <p class="text-gray-500 mb-4">Mulai kolaborasi dengan membuat proyek pertama Anda.</p>
-      <button @click="isModalOpen = true" class="text-blue-600 hover:text-blue-700 font-medium">
+      <button @click="openCreateModal" class="text-blue-600 hover:text-blue-700 font-medium">
         + Buat Proyek Baru
       </button>
     </div>
@@ -40,17 +40,23 @@
           </p>
         </div>
 
-        <div class="mt-6 pt-4 border-t border-gray-50 flex justify-between items-center text-sm text-gray-500">
-          <span>Dibuat: {{ new Date(project.created_at).toLocaleDateString() }}</span>
-          <NuxtLink :to="`/projects/${project.id}`" class="text-blue-600 font-medium hover:underline">
-            Lihat Tugas &rarr;
-          </NuxtLink>
+        <div class="mt-6 pt-4 border-t border-gray-50 flex justify-between items-center text-sm">
+          <span class="text-gray-400">Dibuat: {{ new Date(project.created_at).toLocaleDateString() }}</span>
+
+          <div class="flex items-center gap-3">
+            <button @click="openEditModal(project)" class="text-gray-500 hover:text-gray-800 font-medium transition-colors">
+              Edit
+            </button>
+            <NuxtLink :to="`/projects/${project.id}`" class="text-blue-600 font-medium hover:underline">
+              Lihat Tugas &rarr;
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </div>
 
-    <UiModal v-model="isModalOpen" title="Buat Proyek Baru">
-      <form id="createProjectForm" @submit.prevent="handleCreateProject">
+    <UiModal v-model="isModalOpen" :title="isEditing ? 'Edit Proyek' : 'Buat Proyek Baru'">
+      <form id="projectForm" @submit.prevent="handleSubmit">
         <div v-if="error" class="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm">
           {{ error.message }}
         </div>
@@ -59,7 +65,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Proyek</label>
           <input
               type="text"
-              v-model="newProject.name"
+              v-model="projectForm.name"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Cth: Redesign Landing Page"
@@ -68,7 +74,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
           <textarea
-              v-model="newProject.description"
+              v-model="projectForm.description"
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none"
               rows="3"
@@ -78,12 +84,28 @@
       </form>
 
       <template #footer>
-        <UiButton variant="secondary" @click="isModalOpen = false">
-          Batal
-        </UiButton>
-        <UiButton type="submit" form="createProjectForm" variant="primary" :loading="loading">
-          Buat Proyek
-        </UiButton>
+        <div class="flex justify-between w-full">
+          <div>
+            <UiButton
+                v-if="isEditing"
+                type="button"
+                variant="danger"
+                @click="handleDelete"
+                :disabled="loading"
+            >
+              Hapus
+            </UiButton>
+          </div>
+
+          <div class="flex gap-3">
+            <UiButton variant="secondary" @click="isModalOpen = false">
+              Batal
+            </UiButton>
+            <UiButton type="submit" form="projectForm" variant="primary" :loading="loading">
+              {{ isEditing ? 'Simpan Perubahan' : 'Buat Proyek' }}
+            </UiButton>
+          </div>
+        </div>
       </template>
     </UiModal>
 
@@ -94,12 +116,16 @@
 import { ref, onMounted, watch } from 'vue'
 import { useProjectApi } from '~/composables/useProject'
 import { useAuthStore } from '~/stores/auth'
+import type { Project } from '~/types'
 
 const authStore = useAuthStore()
-const { projects, fetchProjects, createProject, loading, error } = useProjectApi()
+const { projects, fetchProjects, createProject, updateProject, deleteProject, loading, error } = useProjectApi()
 
 const isModalOpen = ref(false)
-const newProject = ref({
+const isEditing = ref(false)
+const editingProjectId = ref<number | null>(null)
+
+const projectForm = ref({
   name: '',
   description: ''
 })
@@ -118,15 +144,52 @@ watch(() => authStore.activeWorkspaceId, async (newWorkspaceId) => {
   }
 })
 
-const handleCreateProject = async () => {
+const openCreateModal = () => {
+  isEditing.value = false
+  editingProjectId.value = null
+  projectForm.value = { name: '', description: '' }
+  isModalOpen.value = true
+}
+
+const openEditModal = (project: Project) => {
+  isEditing.value = true
+  editingProjectId.value = project.id
+  projectForm.value = {
+    name: project.name,
+    description: project.description
+  }
+  isModalOpen.value = true
+}
+
+const handleSubmit = async () => {
   try {
-    await createProject({
-      name: newProject.value.name,
-      description: newProject.value.description
-    })
+    if (isEditing.value && editingProjectId.value) {
+      await updateProject(editingProjectId.value, {
+        name: projectForm.value.name,
+        description: projectForm.value.description
+      })
+    } else {
+      await createProject({
+        name: projectForm.value.name,
+        description: projectForm.value.description
+      })
+    }
     isModalOpen.value = false
-    newProject.value = { name: '', description: '' }
   } catch (e) {
+  }
+}
+
+const handleDelete = async () => {
+  if (!editingProjectId.value) return
+
+  const isConfirmed = window.confirm('Apakah Anda yakin ingin menghapus proyek ini beserta seluruh tugas di dalamnya? Tindakan ini tidak dapat dibatalkan.')
+
+  if (isConfirmed) {
+    try {
+      await deleteProject(editingProjectId.value)
+      isModalOpen.value = false
+    } catch (e) {
+    }
   }
 }
 </script>
