@@ -1,25 +1,18 @@
 <template>
   <div>
-    <div class="mb-8">
-      <NuxtLink to="/projects" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-4">
+    <div class="mb-4">
+      <NuxtLink to="/projects" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-2">
         &larr; Kembali ke Daftar Proyek
       </NuxtLink>
 
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Papan Tugas</h1>
-          <p class="text-sm text-gray-500 mt-1">Kelola tugas untuk proyek #{{ projectId }}</p>
-        </div>
-
+      <UiPageHeader title="Papan Tugas" :description="`Kelola tugas untuk proyek #${projectId}`">
         <UiButton @click="openCreateModal">
           + Tambah Tugas
         </UiButton>
-      </div>
+      </UiPageHeader>
     </div>
 
-    <div v-if="loading && tasks.length === 0" class="flex justify-center items-center py-12">
-      <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-    </div>
+    <UiLoading v-if="loading && tasks.length === 0" />
 
     <div v-else class="flex gap-6 overflow-x-auto pb-4">
 
@@ -84,9 +77,7 @@
 
     <UiModal v-model="isModalOpen" :title="isEditing ? 'Edit Tugas' : 'Tambah Tugas Baru'">
       <form id="taskForm" @submit.prevent="handleSubmit">
-        <div v-if="error" class="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-          {{ error.message }}
-        </div>
+        <UiAlert :message="error?.message" />
 
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Tugas</label>
