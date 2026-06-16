@@ -22,7 +22,7 @@ export const useTaskApi = () => {
         }
     }
 
-    const createTask = async (projectId: string | number, data: { title: string; description?: string; status?: string }) => {
+    const createTask = async (projectId: string | number, data: { title: string; description?: string; status?: string; assignee_id?: string }) => {
         try {
             const response = await generalAPI<{ data: Task } | Task>({
                 endpoint: `projects/${projectId}/tasks`,
@@ -39,7 +39,7 @@ export const useTaskApi = () => {
         }
     }
 
-    const updateTask = async (projectId: string | number, taskId: string | number, data: { title?: string; description?: string; status?: string }) => {
+    const updateTask = async (projectId: string | number, taskId: string | number, data: { title?: string; description?: string; status?: string; assignee_id?: string }) => {
         try {
             const response = await generalAPI<{ data: Task } | Task>({
                 endpoint: `projects/${projectId}/tasks/${taskId}`,
